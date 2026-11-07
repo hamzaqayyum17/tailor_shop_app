@@ -8,7 +8,6 @@ import '../models/order.dart';
 import 'add_customer_screen.dart';
 import 'measurement_screen.dart';
 import 'order_list_screen.dart';
-
 // Shows everything about ONE customer. Read-only.
 class CustomerDetailScreen extends StatefulWidget {
   final Customer customer;
@@ -20,12 +19,11 @@ class CustomerDetailScreen extends StatefulWidget {
 }
 
 class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
-  // Always read the NEWEST customer from the repository,
-  // because the customer may have been edited.
+  
   Customer get _customer =>
       customerRepository.getById(widget.customer.id) ?? widget.customer;
 
-  // Each button opens a screen, then refreshes this page when we return.
+  
   Future<void> _edit() async {
     await Navigator.push(
       context,
@@ -56,7 +54,7 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
     setState(() {});
   }
 
-  // HELPER: one "label ...... value" line.
+  
   Widget _row(String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
@@ -70,10 +68,8 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
     );
   }
 
-  // HELPER: a number in inches. 0 means "not taken yet".
   String _inch(double v) => v == 0 ? '-' : '$v inch';
 
-  // HELPER: a small bold title inside a card.
   Widget _subTitle(String text) {
     return Padding(
       padding: const EdgeInsets.only(top: 12, bottom: 4),
@@ -87,7 +83,6 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
     );
   }
 
-  // HELPER: a card with a title, an optional button, and content.
   Widget _section({
     required String title,
     required IconData icon,
@@ -127,7 +122,6 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
     );
   }
 
-  // The measurement lines (or a message if none are saved).
   List<Widget> _measurementRows() {
     final m = measurementRepository.getForCustomer(_customer.id);
 
@@ -154,10 +148,7 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
       _row('Pancha', _inch(m.pancha)),
       _row('Shalwar pocket', m.shalwarPocket ? 'Yes' : 'No'),
       // Show notes only if the tailor wrote something.
-      if (m.notes.isNotEmpty) ...[
-        _subTitle('Notes'),
-        Text(m.notes),
-      ],
+      if (m.notes.isNotEmpty) ...[_subTitle('Notes'), Text(m.notes)],
     ];
   }
 
@@ -195,7 +186,12 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
             children: [
               _row('Name', customer.name),
               _row('Phone', customer.phone),
-              _row('Address', customer.address.isEmpty ? '-' : customer.address),
+              _row(
+                'Address',
+                customer.address.isEmpty ? '-' : customer.address,
+              ),
+              const SizedBox(height: 8),
+              
             ],
           ),
 
