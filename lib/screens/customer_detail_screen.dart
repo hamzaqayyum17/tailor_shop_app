@@ -5,10 +5,11 @@ import '../data/measurement_repository.dart';
 import '../data/order_repository.dart';
 import '../models/customer.dart';
 import '../models/order.dart';
+import '../utils/contact_helper.dart';
 import 'add_customer_screen.dart';
 import 'measurement_screen.dart';
 import 'order_list_screen.dart';
-// Shows everything about ONE customer. Read-only.
+
 class CustomerDetailScreen extends StatefulWidget {
   final Customer customer;
 
@@ -19,11 +20,10 @@ class CustomerDetailScreen extends StatefulWidget {
 }
 
 class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
-  
+  // Always read the NEWEST customer (it may have been edited).
   Customer get _customer =>
       customerRepository.getById(widget.customer.id) ?? widget.customer;
 
-  
   Future<void> _edit() async {
     await Navigator.push(
       context,
@@ -54,7 +54,44 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
     setState(() {});
   }
 
-  
+
+  void _showMessage(String text) {
+    if (!mounted) return; // the screen may be closed already
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+  }
+
+  Future<void> _call() async {
+    final ok = await ContactHelper.call(_customer.phone);
+    if (!ok) _showMessage('Could not open the phone app');
+  }
+
+  // Builds the WhatsApp text. A Ready order gets a special message.
+  String _whatsappMessage() {
+    final ready = orderRepository
+        .getForCustomer(_customer.id)
+        .where((o) => o.status == OrderStatus.ready)
+        .toList();
+
+    if (ready.isEmpty) {
+      return 'Assalam o Alaikum ${_customer.name}';
+    }
+
+    final o = ready.first;
+    return 'Assalam o Alaikum ${_customer.name}, '
+        'your ${o.dressType} is ready. '
+        'Balance to collect: Rs ${o.balance.toStringAsFixed(0)}. '
+        'Thank you.';
+  }
+
+  Future<void> _whatsapp() async {
+    final ok = await ContactHelper.whatsapp(
+      _customer.phone,
+      _whatsappMessage(),
+    );
+    if (!ok) _showMessage('Could not open WhatsApp');
+  }
+
+  // One "label ...... value" line.
   Widget _row(String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
@@ -68,6 +105,7 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
     );
   }
 
+  // A number in inches. 0 means "not taken yet".
   String _inch(double v) => v == 0 ? '-' : '$v inch';
 
   Widget _subTitle(String text) {
@@ -83,6 +121,7 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
     );
   }
 
+  // A card with a title, an optional button, and content.
   Widget _section({
     required String title,
     required IconData icon,
@@ -122,6 +161,7 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
     );
   }
 
+  // The measurement lines (or a message if none are saved).
   List<Widget> _measurementRows() {
     final m = measurementRepository.getForCustomer(_customer.id);
 
@@ -147,8 +187,10 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
       _row('Waist', _inch(m.shalwarWaist)),
       _row('Pancha', _inch(m.pancha)),
       _row('Shalwar pocket', m.shalwarPocket ? 'Yes' : 'No'),
-      // Show notes only if the tailor wrote something.
-      if (m.notes.isNotEmpty) ...[_subTitle('Notes'), Text(m.notes)],
+      if (m.notes.isNotEmpty) ...[
+        _subTitle('Notes'),
+        Text(m.notes),
+      ],
     ];
   }
 
@@ -157,7 +199,7 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
     final customer = _customer;
     final orders = orderRepository.getForCustomer(customer.id);
 
-    // Money the customer still owes (delivered orders are counted as paid).
+    // Money the customer still owes (delivered orders count as paid).
     double due = 0;
     for (final o in orders) {
       if (o.status != OrderStatus.delivered) {
@@ -179,19 +221,34 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
       body: ListView(
         padding: const EdgeInsets.all(12),
         children: [
-          // 1. Customer information.
+          // 1. Customer information + Call and WhatsApp.
           _section(
             title: 'Customer',
             icon: Icons.person,
             children: [
               _row('Name', customer.name),
               _row('Phone', customer.phone),
-              _row(
-                'Address',
-                customer.address.isEmpty ? '-' : customer.address,
-              ),
+              _row('Address', customer.address.isEmpty ? '-' : customer.address),
               const SizedBox(height: 8),
-              
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _call,
+                      icon: const Icon(Icons.call),
+                      label: const Text('Call'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: _whatsapp,
+                      icon: const Icon(Icons.chat),
+                      label: const Text('WhatsApp'),
+                    ),
+                  ),
+                ],
+              ),
             ],
           ),
 
